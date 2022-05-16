@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   get_next_line.c                                    :+:      :+:    :+:   */
+/*   get_next_line_bonus.c                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mschlenz <mschlenz@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/01 21:00:32 by mschlenz          #+#    #+#             */
-/*   Updated: 2022/05/16 10:10:12 by mschlenz         ###   ########.fr       */
+/*   Updated: 2022/05/12 14:05:31 by mschlenz         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,26 +54,26 @@ static void	trim_stat_buf(char **stat_buf)
 
 char	*get_next_line(int fd)
 {
-	static char		*stat_buf = NULL;
+	static char		*stat_buf[4096];
 	char			*line;
 
 	line = NULL;
 	if (BUFFER_SIZE <= 0 || read(fd, 0, 0) < 0)
 		return (NULL);
-	if (stat_buf)
+	if (stat_buf[fd])
 	{
-		if (p_nl(stat_buf) == -1)
-			line = ft_strdup(stat_buf);
+		if (p_nl(stat_buf[fd]) == -1)
+			line = ft_strdup(stat_buf[fd]);
 		else
 		{
-			line = substr(stat_buf, 0, p_nl(stat_buf), 2);
-			trim_stat_buf(&stat_buf);
+			line = substr(stat_buf[fd], 0, p_nl(stat_buf[fd]), 2);
+			trim_stat_buf(&stat_buf[fd]);
 			return (line);
 		}
-		free (stat_buf);
-		stat_buf = NULL;
+		free (stat_buf[fd]);
+		stat_buf[fd] = NULL;
 	}
-	create_line(&line, &stat_buf, fd, 1);
+	create_line(&line, &stat_buf[fd], fd, 1);
 	if (ft_strlen(line) > 0)
 		return (line);
 	free (line);
@@ -83,7 +83,6 @@ char	*get_next_line(int fd)
 /*
 #include "get_next_line_utils.c"
 #include <fcntl.h>
-#include <stdio.h>
 
 int main(void) 
 {
@@ -97,7 +96,7 @@ int main(void)
     int i = 0;
 	char *a;
 
-	while (i < 10)
+	while (i < 7)
 	{
 	a = get_next_line(fd);
 		printf("| %d:%s",i + 1, a);

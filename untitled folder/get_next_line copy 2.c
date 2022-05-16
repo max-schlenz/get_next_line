@@ -5,127 +5,114 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: mschlenz <mschlenz@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/04/28 14:51:17 by mschlenz          #+#    #+#             */
-/*   Updated: 2022/04/28 16:31:09 by mschlenz         ###   ########.fr       */
+/*   Created: 2022/05/01 21:00:32 by mschlenz          #+#    #+#             */
+/*   Updated: 2022/05/10 17:11:49 by mschlenz         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <unistd.h>
+#include "get_next_line.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
 
-static size_t	ft_strlen(const char *c)
+static int	create_line(char **line, char **stat_buf, int fd, int rcheck)
 {
-	int	i;
+	char			buf[BUFFER_SIZE + 1];
+	char			*temp;
+	char			*temp2;
 
-	i = 0;
-	while (c[i] != '\0')
-		i++;
-	return (i);
-}
-
-static size_t	ft_strlcpy(char *dst, const char *src, size_t dstsize)
-{
-	size_t	i;
-	size_t	c_src;
-
-	i = 0;
-	c_src = 0;
-	c_src = ft_strlen(src);
-	if (dstsize != 0)
+	temp = NULL;
+	temp2 = NULL;
+	while (rcheck > 0)
 	{
-		while (i < dstsize - 1 && src[i] != '\0')
+		rcheck = read(fd, buf, BUFFER_SIZE);
+		buf[rcheck] = '\0';
+		temp = *line;
+		if (p_nl(buf) >= 0)
 		{
-			dst[i] = src[i];
-			i++;
+			*stat_buf = substr(buf, p_nl(buf) + 1, BUFFER_SIZE - p_nl(buf), 1);
+			temp2 = substr(buf, 0, p_nl(buf), 2);
+			*line = ft_strjoin_dup(*line, temp2);
+			free(temp2);
+			if (temp != NULL)
+				free(temp);
+			break ;
 		}
-	dst[i] = '\0';
+		*line = ft_strjoin_dup(*line, buf);
+		free(temp);
 	}
-	return (c_src);
+	return (rcheck);
 }
 
-char	*ft_strchr(const char *s, int c)
+static void	split_stat_buf(char **stat_buf)
 {
-	int	i;
+	int	stat_buf_nl;
 
-	i = 0;
-	while (s[i] != '\0')
-	{
-		if (s[i] == (char)c)
-			return ((char *)s + i);
-	i++;
-	}
-	if (s[i] == (char)c)
-		return ((char *)s + i);
-	return (0);
+	stat_buf_nl = p_nl(*stat_buf);
+	*stat_buf = substr(*stat_buf, stat_buf_nl + 1, \
+				ft_strlen(*stat_buf) - stat_buf_nl, 1);
 }
 
-int		search_char(const char *s, int c)
+static char	*check_return(char *line)
 {
-	int	i;
-
-	i = 0;
-	while (s[i] != '\0')
-	{
-		if (s[i] == (char)c)
-			return (i);
-	i++;
-	}
-	return (0);
+	if (!line)
+		return (NULL);
+	if (ft_strlen(line) > 0)
+		return (line);
+	free(line);
+	return (NULL);
 }
 
 char	*get_next_line(int fd)
 {
-	char			buffer[BUFFER_SIZE + 1];
-	static char		static_buffer[BUFFER_SIZE + 1];
-	int				rcheck;
+	static char		*stat_buf = NULL;
 	char			*line;
-	int				i = 0;
+	char			*temp;
 
-	rcheck = 0;
-	line = malloc(1024);
-	//static_buffer = malloc(1024);
-	if (fd < 0 || BUFFER_SIZE <= 0)
+	line = NULL;
+	temp = NULL;
+	if (BUFFER_SIZE <= 0 || read(fd, 0, 0) < 0)
 		return (NULL);
-	//if (static_buffer[0] != '\0')
-		printf("%s", static_buffer);
-	while ((rcheck = (read(fd, buffer, BUFFER_SIZE))) >= 0) // && (!ft_strchr(buffer, '\n')))
+	if (stat_buf)
 	{
-		while (i < rcheck && buffer[i] != '\n' && buffer[i] != '\0')
+		if (p_nl(stat_buf) != -1)
 		{
-			line[i] = buffer[i];
-			i++;
+			temp = stat_buf;
+			line = substr(stat_buf, 0, p_nl(stat_buf), 2);
+			split_stat_buf(&stat_buf);
+			free (temp);
+			return (line);
 		}
-		if (buffer[i] == '\n')
-		{
-			ft_strlcpy(static_buffer, buffer + i + 1, (BUFFER_SIZE - search_char(buffer, '\n')));
-			//static_buffer[(ft_strlen(static_buffer)) + 1] = '\0';
-			break ;
-			
-		}
-		i = 0;
-		if (rcheck == 0)
-		{
-			break ;
-		}
+		line = ft_strdup(stat_buf);
+		free (stat_buf);
+		stat_buf = NULL;
 	}
-	
-	//line[rcheck] = '\0';
+	create_line(&line, &stat_buf, fd, 1);
+	line = check_return(line);
 	return (line);
 }
+/*
+#include "get_next_line_utils.c"
+#include <fcntl.h>
 
-int main(void)
+int main(void) 
 {
-	int fd = open("file.txt", O_RDONLY);
-	//int fd = 0;
+	//int fd = open("gnlTester/files/big_line_no_nl", O_RDONLY);
+	//int fd = open("gnlTester/files/nl", O_RDONLY);
+	int fd = open("gnlTester/files/41_with_nl", O_RDONLY);
+	//int fd = open("gnlTester/files/alternate_line_nl_no_nl", O_RDONLY);
+	//int fd = open("gnlTester/files/empty", O_RDONLY);
+	//int fd = open("gnlTester/files/multiple_nlx5", O_RDONLY);
+	//int fd = open("file.txt", O_RDONLY);
     int i = 0;
 	char *a;
 
-	while (i < 5)
+	while (i < 3)
 	{
 	a = get_next_line(fd);
-		printf("%s\n", a);
+		printf("| %d:%s",i + 1, a);
+		//printf("%s", a);
+		free(a);
 	i++;
 	}
+//system("leaks a.out");
 }
+*/

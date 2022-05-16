@@ -5,76 +5,114 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: mschlenz <mschlenz@student.42heilbronn.    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/04/25 11:36:37 by mschlenz          #+#    #+#             */
-/*   Updated: 2022/04/26 18:10:49 by mschlenz         ###   ########.fr       */
+/*   Created: 2022/05/01 21:00:32 by mschlenz          #+#    #+#             */
+/*   Updated: 2022/05/10 16:43:20 by mschlenz         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <unistd.h>
+#include "get_next_line.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
+
+static int	create_line(char **line, char **stat_buf, int fd, int rcheck)
+{
+	char			buf[BUFFER_SIZE + 1];
+	char			*temp;
+	char			*temp2;
+
+	temp = NULL;
+	temp2 = NULL;
+	while (rcheck > 0)
+	{
+		rcheck = read(fd, buf, BUFFER_SIZE);
+		buf[rcheck] = '\0';
+		temp = *line;
+		if (p_nl(buf) >= 0)
+		{
+			*stat_buf = substr(buf, p_nl(buf) + 1, BUFFER_SIZE - p_nl(buf), 1);
+			temp2 = substr(buf, 0, p_nl(buf), 2);
+			*line = ft_strjoin_dup(*line, temp2);
+			free(temp2);
+			if (temp != NULL)
+				free(temp);
+			break ;
+		}
+		*line = ft_strjoin_dup(*line, buf);
+		free(temp);
+	}
+	return (rcheck);
+}
+
+static void	split_stat_buf(char **stat_buf)
+{
+	int	stat_buf_nl;
+
+	stat_buf_nl = p_nl(*stat_buf);
+	*stat_buf = substr(*stat_buf, stat_buf_nl + 1, \
+				ft_strlen(*stat_buf) - stat_buf_nl, 1);
+}
+
+static char	*check_return(char *line)
+{
+	if (!line)
+		return (NULL);
+	if (ft_strlen(line) > 0)
+		return (line);
+	free(line);
+	return (NULL);
+}
 
 char	*get_next_line(int fd)
 {
-    char			buf[BUFFER_SIZE + 1];
-    //unsigned int	len = BUFFER_SIZE;
-	int				rcheck = 0;
-    int				i = 0;
-	int				j = 0;
-	static char		tmp_char[BUFFER_SIZE + 1];
-	char			*ret;
+	static char		*stat_buf;
+	char			*line;
+	char			*temp;
+	static int		rcheck;
 
-	if (fd < 0 || BUFFER_SIZE <= 0)
-		return (NULL);
-    rcheck = (read(fd, buf, BUFFER_SIZE));
-	if (rcheck == 0 || rcheck == -1)
-		return (NULL);
-	ret=malloc(BUFFER_SIZE);
-	if (!ret)
-		return (NULL);
-    buf[BUFFER_SIZE] = '\0';
-	while (tmp_char[i] != '\0')
+	line = NULL;
+	temp = NULL;
+	if (BUFFER_SIZE <= 0 || read(fd, 0, 0) < 0)
+			return (NULL);
+	if (rcheck > 0 && stat_buf)
 	{
-		ret[j] = tmp_char[i];
-		i++;
-		j++;
+		if (p_nl(stat_buf) != -1)
+		{
+			temp = stat_buf;
+			line = substr(stat_buf, 0, p_nl(stat_buf), 2);
+			split_stat_buf(&stat_buf);
+			free (temp);
+			return (line);
+		}
+		line = ft_strdup(stat_buf);
+		free (stat_buf);
 	}
-	i = 0;
-    while (i < BUFFER_SIZE)
-    {
-		while (buf[i] != '\n' && buf[i] != '\0')
-		{
-        ret[j] = buf[i];
-		i++;
-		j++;
-		}
-		j = 0;
-		while (buf[i] != '\0')
-		{
-			tmp_char[j] = buf[i];
-			i++;
-			j++;
-		}
-        i++;
-    }
-	ret[BUFFER_SIZE - 1] = '\0';
-	tmp_char[j] = '\0';
-	return (ret);
+	rcheck = create_line(&line, &stat_buf, fd, 1);
+	line = check_return(line);
+	return (line);
 }
 
-/*
-int main(void)
+
+#include "get_next_line_utils.c"
+#include <fcntl.h>
+
+int main(void) 
 {
-    int fd = open("file.txt", O_RDONLY);
+	//int fd = open("gnlTester/files/big_line_no_nl", O_RDONLY);
+	//int fd = open("gnlTester/files/nl", O_RDONLY);
+	int fd = open("gnlTester/files/41_with_nl", O_RDONLY);
+	//int fd = open("gnlTester/files/alternate_line_nl_no_nl", O_RDONLY);
+	//int fd = open("gnlTester/files/empty", O_RDONLY);
+	//int fd = open("gnlTester/files/multiple_nlx5", O_RDONLY);
+	//int fd = open("file.txt", O_RDONLY);
     int i = 0;
 	char *a;
-	
-	while (i < 5)
+
+	while (i < 3)
 	{
 	a = get_next_line(fd);
-		printf("%s", a);
+		printf("| %d:%s",i + 1, a);
+		//printf("%s", a);
+		free(a);
 	i++;
 	}
+system("leaks a.out");
 }
-*/
